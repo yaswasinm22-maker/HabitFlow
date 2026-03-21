@@ -1,0 +1,133 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>HabitFlow</title>
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+
+  <!-- Header -->
+  <header class="header">
+    <div class="header-left">
+      <div class="logo">HabitFlow</div>
+      <div class="tagline">build better habits, one day at a time</div>
+    </div>
+    <nav class="nav">
+      <button class="nav-btn active" onclick="showPage('habits', this)">My Habits</button>
+      <button class="nav-btn" onclick="showPage('progress', this)">Progress</button>
+    </nav>
+  </header>
+
+  <div class="container">
+
+    <!-- ── HABITS PAGE ── -->
+    <div id="page-habits">
+
+      <!-- Top row -->
+      <div class="top-row">
+        <div>
+          <h2 class="page-title">Today's Habits</h2>
+          <p class="page-date" id="page-date"></p>
+        </div>
+        <button class="btn-add" onclick="openModal()">+ Add Habit</button>
+      </div>
+
+      <!-- Summary cards -->
+      <div class="summary-row">
+        <div class="summary-card">
+          <div class="summary-val" id="stat-done">0</div>
+          <div class="summary-lbl">Done today</div>
+        </div>
+        <div class="summary-card">
+          <div class="summary-val" id="stat-total">0</div>
+          <div class="summary-lbl">Total habits</div>
+        </div>
+        <div class="summary-card">
+          <div class="summary-val" id="stat-streak">0</div>
+          <div class="summary-lbl">Best streak</div>
+        </div>
+        <div class="summary-card">
+          <div class="summary-val" id="stat-rate">0%</div>
+          <div class="summary-lbl">Today's rate</div>
+        </div>
+      </div>
+
+      <!-- Category filter tabs -->
+      <div class="tabs">
+        <button class="tab active" onclick="filterCat('all', this)">All</button>
+        <button class="tab" onclick="filterCat('health', this)">Health</button>
+        <button class="tab" onclick="filterCat('money', this)">Finance</button>
+        <button class="tab" onclick="filterCat('mind', this)">Learning</button>
+        <button class="tab" onclick="filterCat('work', this)">Work</button>
+      </div>
+
+      <!-- Habits list -->
+      <div id="habits-list"></div>
+
+    </div>
+
+    <!-- ── PROGRESS PAGE ── -->
+    <div id="page-progress" style="display:none">
+
+      <div class="top-row">
+        <div>
+          <h2 class="page-title">Weekly Progress</h2>
+          <p class="page-date">How consistent have you been this week?</p>
+        </div>
+      </div>
+
+      <!-- Weekly bar chart -->
+      <div class="chart-card">
+        <div class="chart-title">Habits completed per day — last 7 days</div>
+        <div class="chart-bars" id="chart-bars"></div>
+        <div class="chart-labels" id="chart-labels"></div>
+      </div>
+
+      <!-- Per category breakdown -->
+      <h3 class="section-title">By category</h3>
+      <div class="cat-breakdown" id="cat-breakdown"></div>
+
+      <!-- All habits list with completion -->
+      <h3 class="section-title">All habits this week</h3>
+      <div id="progress-list"></div>
+
+    </div>
+
+  </div>
+
+  <!-- Add / Edit Modal -->
+  <div class="modal-bg" id="modal-bg">
+    <div class="modal">
+      <div class="modal-header">
+        <span class="modal-title" id="modal-title">Add a Habit</span>
+        <button class="modal-close" onclick="closeModal()">✕</button>
+      </div>
+      <div class="form-group">
+        <label>Habit name</label>
+        <input type="text" id="m-name" placeholder="e.g. Morning run" />
+      </div>
+      <div class="form-group">
+        <label>Description <span class="optional">(optional)</span></label>
+        <input type="text" id="m-desc" placeholder="e.g. 5km before 7am" />
+      </div>
+      <div class="form-group">
+        <label>Category</label>
+        <select id="m-cat">
+          <option value="health">Health & Fitness</option>
+          <option value="money">Money & Finance</option>
+          <option value="mind">Mind & Learning</option>
+          <option value="work">Work & Productivity</option>
+        </select>
+      </div>
+      <div class="modal-btns">
+        <button class="btn-cancel" onclick="closeModal()">Cancel</button>
+        <button class="btn-save" onclick="saveHabit()">Save Habit</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="app.js"></script>
+</body>
+</html>
