@@ -1,4 +1,4 @@
-const API = 'http://localhost:5000/api/habits';
+const API = 'https://habitflow-backend-7ful.onrender.com/api/habits';
 
 // ── State ──────────────────────────────────────────────────────────────────
 let habits = [];
