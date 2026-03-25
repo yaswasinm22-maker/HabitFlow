@@ -1,0 +1,81 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Register - HabitFlow</title>
+  <link rel="stylesheet" href="style.css">
+  <style>
+    body { background: #f4f4f0; display: flex; justify-content: center; align-items: center; height: 100vh; margin: 0; }
+    .auth-container {
+      background: #fff;
+      padding: 32px;
+      border-radius: 12px;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+      width: 320px;
+      text-align: center;
+    }
+    .auth-container h2 { margin-bottom: 24px; color: #2d6a4f; }
+    .auth-container input {
+      width: 100%;
+      padding: 10px;
+      margin-bottom: 16px;
+      border: 1px solid #ddd;
+      border-radius: 6px;
+      box-sizing: border-box;
+    }
+    .auth-container button {
+      width: 100%;
+      padding: 10px;
+      background: #2d6a4f;
+      color: white;
+      border: none;
+      border-radius: 6px;
+      cursor: pointer;
+    }
+    .auth-container button:hover { background: #1f4d38; }
+    .error { color: #e76f51; margin-top: 10px; font-size: 14px; }
+    .link { margin-top: 16px; font-size: 13px; }
+    .link a { color: #2d6a4f; text-decoration: none; }
+  </style>
+</head>
+<body>
+  <div class="auth-container">
+    <h2>Create Account</h2>
+    <form id="registerForm">
+      <input type="email" id="email" placeholder="Email" required>
+      <input type="password" id="password" placeholder="Password" required>
+      <button type="submit">Register</button>
+      <div id="error" class="error"></div>
+    </form>
+    <div class="link">
+      Already have an account? <a href="login.html">Login</a>
+    </div>
+  </div>
+
+  <script>
+    const API_BASE = 'https://your-backend-url.onrender.com'; // 🔁 Replace with your actual backend URL
+
+    document.getElementById('registerForm').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const email = document.getElementById('email').value;
+      const password = document.getElementById('password').value;
+      const errorDiv = document.getElementById('error');
+
+      try {
+        const res = await fetch(`${API_BASE}/api/auth/register`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ email, password })
+        });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error);
+        alert('Registration successful! Please log in.');
+        window.location.href = 'login.html';
+      } catch (err) {
+        errorDiv.textContent = err.message;
+      }
+    });
+  </script>
+</body>
+</html>

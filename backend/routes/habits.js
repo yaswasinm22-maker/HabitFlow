@@ -1,21 +1,22 @@
 const express = require('express');
 const router = express.Router();
 const Habit = require('../models/Habit');
+const auth = require('../middleware/auth'); // <-- import middleware
 
-// GET all habits
-router.get('/', async (req, res) => {
+// GET all habits for the logged-in user
+router.get('/', auth, async (req, res) => {
   try {
-    const habits = await Habit.find().sort({ createdAt: -1 });
+    const habits = await Habit.find({ user: req.userId }).sort({ createdAt: -1 });
     res.json(habits);
   } catch (err) {
     res.status(500).json({ message: err.message });
   }
 });
 
-// GET single habit
-router.get('/:id', async (req, res) => {
+// GET single habit (must belong to user)
+router.get('/:id', auth, async (req, res) => {
   try {
-    const habit = await Habit.findById(req.params.id);
+    const habit = await Habit.findOne({ _id: req.params.id, user: req.userId });
     if (!habit) return res.status(404).json({ message: 'Habit not found' });
     res.json(habit);
   } catch (err) {
@@ -23,10 +24,11 @@ router.get('/:id', async (req, res) => {
   }
 });
 
-// CREATE habit
-router.post('/', async (req, res) => {
+// CREATE habit (associate with user)
+router.post('/', auth, async (req, res) => {
   try {
     const habit = new Habit({
+      user: req.userId,
       name: req.body.name,
       description: req.body.description,
       category: req.body.category,
@@ -39,10 +41,10 @@ router.post('/', async (req, res) => {
   }
 });
 
-// UPDATE habit
-router.put('/:id', async (req, res) => {
+// UPDATE habit (must belong to user)
+router.put('/:id', auth, async (req, res) => {
   try {
-    const habit = await Habit.findById(req.params.id);
+    const habit = await Habit.findOne({ _id: req.params.id, user: req.userId });
     if (!habit) return res.status(404).json({ message: 'Habit not found' });
 
     if (req.body.name !== undefined) habit.name = req.body.name;
@@ -57,10 +59,10 @@ router.put('/:id', async (req, res) => {
   }
 });
 
-// MARK habit as done for a specific date
-router.patch('/:id/complete', async (req, res) => {
+// MARK habit as done (must belong to user)
+router.patch('/:id/complete', auth, async (req, res) => {
   try {
-    const habit = await Habit.findById(req.params.id);
+    const habit = await Habit.findOne({ _id: req.params.id, user: req.userId });
     if (!habit) return res.status(404).json({ message: 'Habit not found' });
 
     const date = req.body.date || new Date().toISOString().split('T')[0];
@@ -87,12 +89,11 @@ router.patch('/:id/complete', async (req, res) => {
   }
 });
 
-// DELETE habit
-router.delete('/:id', async (req, res) => {
+// DELETE habit (must belong to user)
+router.delete('/:id', auth, async (req, res) => {
   try {
-    const habit = await Habit.findById(req.params.id);
+    const habit = await Habit.findOneAndDelete({ _id: req.params.id, user: req.userId });
     if (!habit) return res.status(404).json({ message: 'Habit not found' });
-    await habit.deleteOne();
     res.json({ message: 'Habit deleted' });
   } catch (err) {
     res.status(500).json({ message: err.message });
