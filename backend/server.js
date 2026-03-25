@@ -3,7 +3,7 @@ const express = require('express');
 const mongoose = require('mongoose');
 const cors = require('cors');
 const habitRoutes = require('./routes/habits');
-const authRoutes = require('./routes/auth');  // <-- new
+const authRoutes = require('./routes/auth');
 
 const app = express();
 
@@ -18,7 +18,7 @@ mongoose.connect(process.env.MONGO_URI)
 
 // Routes
 app.use('/api/habits', habitRoutes);
-app.use('/api/auth', authRoutes);             // <-- new
+app.use('/api/auth', authRoutes);
 
 app.get('/', (req, res) => {
   res.send('HabitFlow API is running');

@@ -1,9 +1,9 @@
 const express = require('express');
 const router = express.Router();
 const Habit = require('../models/Habit');
-const auth = require('../middleware/auth'); // <-- import middleware
+const auth = require('../middleware/auth');
 
-// GET all habits for the logged-in user
+// GET all habits for logged-in user
 router.get('/', auth, async (req, res) => {
   try {
     const habits = await Habit.find({ user: req.userId }).sort({ createdAt: -1 });
@@ -13,7 +13,7 @@ router.get('/', auth, async (req, res) => {
   }
 });
 
-// GET single habit (must belong to user)
+// GET single habit
 router.get('/:id', auth, async (req, res) => {
   try {
     const habit = await Habit.findOne({ _id: req.params.id, user: req.userId });
@@ -24,7 +24,7 @@ router.get('/:id', auth, async (req, res) => {
   }
 });
 
-// CREATE habit (associate with user)
+// CREATE habit
 router.post('/', auth, async (req, res) => {
   try {
     const habit = new Habit({
@@ -41,7 +41,7 @@ router.post('/', auth, async (req, res) => {
   }
 });
 
-// UPDATE habit (must belong to user)
+// UPDATE habit
 router.put('/:id', auth, async (req, res) => {
   try {
     const habit = await Habit.findOne({ _id: req.params.id, user: req.userId });
@@ -59,7 +59,7 @@ router.put('/:id', auth, async (req, res) => {
   }
 });
 
-// MARK habit as done (must belong to user)
+// MARK habit as done for a specific date
 router.patch('/:id/complete', auth, async (req, res) => {
   try {
     const habit = await Habit.findOne({ _id: req.params.id, user: req.userId });
@@ -89,7 +89,7 @@ router.patch('/:id/complete', auth, async (req, res) => {
   }
 });
 
-// DELETE habit (must belong to user)
+// DELETE habit
 router.delete('/:id', auth, async (req, res) => {
   try {
     const habit = await Habit.findOneAndDelete({ _id: req.params.id, user: req.userId });

@@ -1,11 +1,23 @@
-const API = 'https://habitflow-backend-7ful.onrender.com/api/habits';
+const API_BASE = 'https://habitflow-backend-7ful.onrender.com'; // 🔁 Replace with your actual backend URL
+const API = `${API_BASE}/api/habits`;
 
-// ── State ──────────────────────────────────────────────────────────────────
+// ── Authentication check ──
+const token = localStorage.getItem('token');
+if (!token) {
+  window.location.href = 'login.html';
+}
+
+// ── State ──
 let habits = [];
 let currentCat = 'all';
 let editingId = null;
 
-// ── On load ────────────────────────────────────────────────────────────────
+// ── Helper to get auth header ──
+function authHeader() {
+  return { 'Authorization': `Bearer ${token}` };
+}
+
+// ── On load ──
 document.addEventListener('DOMContentLoaded', () => {
   const d = new Date();
   document.getElementById('page-date').textContent =
@@ -13,18 +25,18 @@ document.addEventListener('DOMContentLoaded', () => {
   fetchHabits();
 });
 
-// ── Fetch habits from backend ──────────────────────────────────────────────
+// ── Fetch habits from backend ──
 async function fetchHabits() {
   try {
-    const res = await fetch(API);
+    const res = await fetch(API, { headers: authHeader() });
     habits = await res.json();
     renderAll();
   } catch (err) {
-    console.error('Cannot connect to backend. Is the server running?');
+    console.error('Cannot connect to backend.', err);
   }
 }
 
-// ── Render everything ──────────────────────────────────────────────────────
+// ── Render everything ──
 function renderAll() {
   renderStats();
   renderHabits();
@@ -32,7 +44,7 @@ function renderAll() {
   renderProgress();
 }
 
-// ── Stats ──────────────────────────────────────────────────────────────────
+// ── Stats ──
 function renderStats() {
   const today = getToday();
   const done = habits.filter(h => h.completedDates.includes(today)).length;
@@ -46,7 +58,7 @@ function renderStats() {
   document.getElementById('stat-rate').textContent = rate + '%';
 }
 
-// ── Habits list ────────────────────────────────────────────────────────────
+// ── Habits list ──
 function renderHabits() {
   const list = document.getElementById('habits-list');
   list.innerHTML = '';
@@ -103,7 +115,7 @@ function renderHabits() {
   });
 }
 
-// ── Weekly bar chart ───────────────────────────────────────────────────────
+// ── Weekly bar chart ──
 function renderChart() {
   const barsEl = document.getElementById('chart-bars');
   const labelsEl = document.getElementById('chart-labels');
@@ -142,7 +154,7 @@ function renderChart() {
   });
 }
 
-// ── Progress page ──────────────────────────────────────────────────────────
+// ── Progress page ──
 function renderProgress() {
   renderCatBreakdown();
   renderProgressList();
@@ -213,25 +225,16 @@ function renderProgressList() {
 
   const withRate = habits.map(h => {
     const createdDate = new Date(h.createdAt).toISOString().split('T')[0];
-
-    // Total days since creation up to today
     const start = new Date(createdDate);
     const end = new Date(today);
     const totalDays = Math.round((end - start) / 86400000) + 1;
-
-    // Total times completed ever
     const totalDone = h.completedDates.length;
-
-    // Completion rate since creation
     const rate = totalDays > 0 ? Math.round(totalDone / totalDays * 100) : 0;
-
     return { ...h, rate, totalDays, totalDone, createdDate };
   }).sort((a, b) => b.rate - a.rate);
 
   withRate.forEach(h => {
     const fillClass = h.rate >= 70 ? '' : h.rate >= 40 ? 'mid' : 'low';
-
-    // Sort completed dates newest first
     const sortedDates = [...h.completedDates].sort((a, b) => new Date(b) - new Date(a));
     const datesHtml = sortedDates.length > 0
       ? sortedDates.map(d => `<span class="date-tag">${formatDate(d)}</span>`).join('')
@@ -259,13 +262,16 @@ function renderProgressList() {
   });
 }
 
-// ── Toggle habit done ──────────────────────────────────────────────────────
+// ── Toggle habit done ──
 async function toggleHabit(id) {
   try {
     const today = getToday();
     const res = await fetch(`${API}/${id}/complete`, {
       method: 'PATCH',
-      headers: { 'Content-Type': 'application/json' },
+      headers: {
+        'Content-Type': 'application/json',
+        ...authHeader()
+      },
       body: JSON.stringify({ date: today })
     });
     const updated = await res.json();
@@ -276,11 +282,11 @@ async function toggleHabit(id) {
   }
 }
 
-// ── Delete habit ───────────────────────────────────────────────────────────
+// ── Delete habit ──
 async function deleteHabit(id) {
   if (!confirm('Are you sure you want to delete this habit?')) return;
   try {
-    await fetch(`${API}/${id}`, { method: 'DELETE' });
+    await fetch(`${API}/${id}`, { method: 'DELETE', headers: authHeader() });
     habits = habits.filter(h => h._id !== id);
     renderAll();
   } catch (err) {
@@ -288,7 +294,7 @@ async function deleteHabit(id) {
   }
 }
 
-// ── Modal ──────────────────────────────────────────────────────────────────
+// ── Modal ──
 function openModal() {
   editingId = null;
   document.getElementById('modal-title').textContent = 'Add a Habit';
@@ -332,7 +338,10 @@ async function saveHabit() {
     if (editingId) {
       const res = await fetch(`${API}/${editingId}`, {
         method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          ...authHeader()
+        },
         body: JSON.stringify(body)
       });
       const updated = await res.json();
@@ -340,7 +349,10 @@ async function saveHabit() {
     } else {
       const res = await fetch(API, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          ...authHeader()
+        },
         body: JSON.stringify(body)
       });
       const created = await res.json();
@@ -354,7 +366,7 @@ async function saveHabit() {
   }
 }
 
-// ── Page switching ─────────────────────────────────────────────────────────
+// ── Page switching ──
 function showPage(page, btn) {
   document.getElementById('page-habits').style.display   = page === 'habits'   ? 'block' : 'none';
   document.getElementById('page-progress').style.display = page === 'progress' ? 'block' : 'none';
@@ -363,7 +375,7 @@ function showPage(page, btn) {
   if (page === 'progress') renderProgress();
 }
 
-// ── Category filter ────────────────────────────────────────────────────────
+// ── Category filter ──
 function filterCat(cat, btn) {
   currentCat = cat;
   document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
@@ -371,7 +383,14 @@ function filterCat(cat, btn) {
   renderHabits();
 }
 
-// ── Helpers ────────────────────────────────────────────────────────────────
+// ── Logout ──
+function logout() {
+  localStorage.removeItem('token');
+  localStorage.removeItem('userId');
+  window.location.href = 'login.html';
+}
+
+// ── Helpers ──
 function getToday() {
   return new Date().toISOString().split('T')[0];
 }

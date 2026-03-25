@@ -1,7 +1,7 @@
 const mongoose = require('mongoose');
 
 const habitSchema = new mongoose.Schema({
-  user: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true }, // <-- new
+  user: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true }, // link to user
   name: { type: String, required: true, trim: true },
   description: { type: String, trim: true, default: '' },
   category: { type: String, enum: ['health', 'money', 'mind', 'work', 'custom'], default: 'health' },

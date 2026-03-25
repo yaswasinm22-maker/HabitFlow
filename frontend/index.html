@@ -8,7 +8,6 @@
 </head>
 <body>
 
-  <!-- Header -->
   <header class="header">
     <div class="header-left">
       <div class="logo">HabitFlow</div>
@@ -17,15 +16,13 @@
     <nav class="nav">
       <button class="nav-btn active" onclick="showPage('habits', this)">My Habits</button>
       <button class="nav-btn" onclick="showPage('progress', this)">Progress</button>
+      <button class="nav-btn" onclick="logout()">Logout</button>
     </nav>
   </header>
 
   <div class="container">
-
-    <!-- ── HABITS PAGE ── -->
+    <!-- Habits page -->
     <div id="page-habits">
-
-      <!-- Top row -->
       <div class="top-row">
         <div>
           <h2 class="page-title">Today's Habits</h2>
@@ -34,27 +31,13 @@
         <button class="btn-add" onclick="openModal()">+ Add Habit</button>
       </div>
 
-      <!-- Summary cards -->
       <div class="summary-row">
-        <div class="summary-card">
-          <div class="summary-val" id="stat-done">0</div>
-          <div class="summary-lbl">Done today</div>
-        </div>
-        <div class="summary-card">
-          <div class="summary-val" id="stat-total">0</div>
-          <div class="summary-lbl">Total habits</div>
-        </div>
-        <div class="summary-card">
-          <div class="summary-val" id="stat-streak">0</div>
-          <div class="summary-lbl">Best streak</div>
-        </div>
-        <div class="summary-card">
-          <div class="summary-val" id="stat-rate">0%</div>
-          <div class="summary-lbl">Today's rate</div>
-        </div>
+        <div class="summary-card"><div class="summary-val" id="stat-done">0</div><div class="summary-lbl">Done today</div></div>
+        <div class="summary-card"><div class="summary-val" id="stat-total">0</div><div class="summary-lbl">Total habits</div></div>
+        <div class="summary-card"><div class="summary-val" id="stat-streak">0</div><div class="summary-lbl">Best streak</div></div>
+        <div class="summary-card"><div class="summary-val" id="stat-rate">0%</div><div class="summary-lbl">Today's rate</div></div>
       </div>
 
-      <!-- Category filter tabs -->
       <div class="tabs">
         <button class="tab active" onclick="filterCat('all', this)">All</button>
         <button class="tab" onclick="filterCat('health', this)">Health</button>
@@ -63,14 +46,11 @@
         <button class="tab" onclick="filterCat('work', this)">Work</button>
       </div>
 
-      <!-- Habits list -->
       <div id="habits-list"></div>
-
     </div>
 
-    <!-- ── PROGRESS PAGE ── -->
+    <!-- Progress page -->
     <div id="page-progress" style="display:none">
-
       <div class="top-row">
         <div>
           <h2 class="page-title">Weekly Progress</h2>
@@ -78,26 +58,21 @@
         </div>
       </div>
 
-      <!-- Weekly bar chart -->
       <div class="chart-card">
         <div class="chart-title">Habits completed per day — last 7 days</div>
         <div class="chart-bars" id="chart-bars"></div>
         <div class="chart-labels" id="chart-labels"></div>
       </div>
 
-      <!-- Per category breakdown -->
       <h3 class="section-title">By category</h3>
       <div class="cat-breakdown" id="cat-breakdown"></div>
 
-      <!-- All habits list with completion -->
       <h3 class="section-title">All habits this week</h3>
       <div id="progress-list"></div>
-
     </div>
-
   </div>
 
-  <!-- Add / Edit Modal -->
+  <!-- Add/Edit Modal -->
   <div class="modal-bg" id="modal-bg">
     <div class="modal">
       <div class="modal-header">
