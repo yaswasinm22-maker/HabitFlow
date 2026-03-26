@@ -7,7 +7,19 @@
   <link rel="stylesheet" href="style.css" />
 </head>
 <body>
-
+ 
+  <!-- Name prompt overlay -->
+  <div class="name-overlay" id="name-overlay">
+    <div class="name-box">
+      <div class="name-logo">HabitFlow</div>
+      <div class="name-tagline">build better habits, one day at a time</div>
+      <h2 class="name-heading">What should we call you?</h2>
+      <input type="text" id="user-name-input" class="name-input" placeholder="Enter your name..." maxlength="30" />
+      <button class="name-btn" onclick="saveName()">Get Started</button>
+    </div>
+  </div>
+ 
+  <!-- Header -->
   <header class="header">
     <div class="header-left">
       <div class="logo">HabitFlow</div>
@@ -16,28 +28,53 @@
     <nav class="nav">
       <button class="nav-btn active" onclick="showPage('habits', this)">My Habits</button>
       <button class="nav-btn" onclick="showPage('progress', this)">Progress</button>
-      <button class="nav-btn" onclick="logout()">Logout</button>
     </nav>
+    <div class="header-right">
+      <span class="greeting" id="greeting"></span>
+      <button class="change-name-btn" onclick="changeName()" title="Change name">✏️</button>
+    </div>
   </header>
-
+ 
   <div class="container">
-    <!-- Habits page -->
+ 
+    <!-- HABITS PAGE -->
     <div id="page-habits">
+ 
       <div class="top-row">
         <div>
           <h2 class="page-title">Today's Habits</h2>
           <p class="page-date" id="page-date"></p>
         </div>
-        <button class="btn-add" onclick="openModal()">+ Add Habit</button>
+        <div class="top-actions">
+          <div class="date-control">
+            <label>Logging for:</label>
+            <input type="date" id="log-date" onchange="renderAll()" />
+          </div>
+          <button class="btn-add" onclick="openModal()">+ Add Habit</button>
+        </div>
       </div>
-
+ 
+      <!-- Summary cards -->
       <div class="summary-row">
-        <div class="summary-card"><div class="summary-val" id="stat-done">0</div><div class="summary-lbl">Done today</div></div>
-        <div class="summary-card"><div class="summary-val" id="stat-total">0</div><div class="summary-lbl">Total habits</div></div>
-        <div class="summary-card"><div class="summary-val" id="stat-streak">0</div><div class="summary-lbl">Best streak</div></div>
-        <div class="summary-card"><div class="summary-val" id="stat-rate">0%</div><div class="summary-lbl">Today's rate</div></div>
+        <div class="summary-card">
+          <div class="summary-val" id="stat-done">0</div>
+          <div class="summary-lbl">Done today</div>
+        </div>
+        <div class="summary-card">
+          <div class="summary-val" id="stat-total">0</div>
+          <div class="summary-lbl">Total habits</div>
+        </div>
+        <div class="summary-card">
+          <div class="summary-val" id="stat-streak">0</div>
+          <div class="summary-lbl">Best streak</div>
+        </div>
+        <div class="summary-card">
+          <div class="summary-val" id="stat-rate">0%</div>
+          <div class="summary-lbl">Completion</div>
+        </div>
       </div>
-
+ 
+      <!-- Category tabs -->
       <div class="tabs">
         <button class="tab active" onclick="filterCat('all', this)">All</button>
         <button class="tab" onclick="filterCat('health', this)">Health</button>
@@ -45,34 +82,50 @@
         <button class="tab" onclick="filterCat('mind', this)">Learning</button>
         <button class="tab" onclick="filterCat('work', this)">Work</button>
       </div>
-
+ 
+      <!-- Habits list -->
       <div id="habits-list"></div>
+ 
     </div>
-
-    <!-- Progress page -->
+ 
+    <!-- PROGRESS PAGE -->
     <div id="page-progress" style="display:none">
+ 
       <div class="top-row">
         <div>
-          <h2 class="page-title">Weekly Progress</h2>
-          <p class="page-date">How consistent have you been this week?</p>
+          <h2 class="page-title">Progress</h2>
+          <p class="page-date">How consistent have you been?</p>
         </div>
       </div>
-
+ 
       <div class="chart-card">
         <div class="chart-title">Habits completed per day — last 7 days</div>
         <div class="chart-bars" id="chart-bars"></div>
         <div class="chart-labels" id="chart-labels"></div>
       </div>
-
+ 
       <h3 class="section-title">By category</h3>
       <div class="cat-breakdown" id="cat-breakdown"></div>
-
-      <h3 class="section-title">All habits this week</h3>
+ 
+      <h3 class="section-title">All habits</h3>
       <div id="progress-list"></div>
+ 
+    </div>
+ 
+  </div>
+ 
+  <!-- Habit detail modal -->
+  <div class="modal-bg" id="detail-modal">
+    <div class="modal modal-large">
+      <div class="modal-header">
+        <span class="modal-title" id="detail-title">Habit Details</span>
+        <button class="modal-close" onclick="closeDetailModal()">✕</button>
+      </div>
+      <div id="detail-content"></div>
     </div>
   </div>
-
-  <!-- Add/Edit Modal -->
+ 
+  <!-- Add / Edit Modal -->
   <div class="modal-bg" id="modal-bg">
     <div class="modal">
       <div class="modal-header">
@@ -96,13 +149,17 @@
           <option value="work">Work & Productivity</option>
         </select>
       </div>
+      <div class="form-group">
+        <label>Daily reminder time <span class="optional">(optional)</span></label>
+        <input type="time" id="m-reminder" />
+      </div>
       <div class="modal-btns">
         <button class="btn-cancel" onclick="closeModal()">Cancel</button>
         <button class="btn-save" onclick="saveHabit()">Save Habit</button>
       </div>
     </div>
   </div>
-
+ 
   <script src="app.js"></script>
 </body>
 </html>
