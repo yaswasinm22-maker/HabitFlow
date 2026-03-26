@@ -7,18 +7,34 @@
   <link rel="stylesheet" href="style.css" />
 </head>
 <body>
- 
-  <!-- Name prompt overlay -->
-  <div class="name-overlay" id="name-overlay">
-    <div class="name-box">
+
+  <!-- Auth overlay (login / register) -->
+  <div class="auth-overlay" id="auth-overlay">
+    <div class="auth-box">
       <div class="name-logo">HabitFlow</div>
       <div class="name-tagline">build better habits, one day at a time</div>
-      <h2 class="name-heading">What should we call you?</h2>
-      <input type="text" id="user-name-input" class="name-input" placeholder="Enter your name..." maxlength="30" />
-      <button class="name-btn" onclick="saveName()">Get Started</button>
+
+      <!-- Tabs -->
+      <div class="auth-tabs">
+        <button class="auth-tab active" id="tab-login" onclick="switchAuthTab('login')">Login</button>
+        <button class="auth-tab" id="tab-register" onclick="switchAuthTab('register')">Register</button>
+      </div>
+
+      <div id="auth-error" class="auth-error"></div>
+
+      <div class="form-group">
+        <label>Email</label>
+        <input type="email" id="auth-email" placeholder="you@email.com" />
+      </div>
+      <div class="form-group">
+        <label>Password</label>
+        <input type="password" id="auth-password" placeholder="••••••••" />
+      </div>
+
+      <button class="name-btn" id="auth-submit-btn" onclick="submitAuth()">Login</button>
     </div>
   </div>
- 
+
   <!-- Header -->
   <header class="header">
     <div class="header-left">
@@ -31,15 +47,15 @@
     </nav>
     <div class="header-right">
       <span class="greeting" id="greeting"></span>
-      <button class="change-name-btn" onclick="changeName()" title="Change name">✏️</button>
+      <button class="change-name-btn" onclick="logout()" title="Logout">🚪</button>
     </div>
   </header>
- 
+
   <div class="container">
- 
+
     <!-- HABITS PAGE -->
     <div id="page-habits">
- 
+
       <div class="top-row">
         <div>
           <h2 class="page-title">Today's Habits</h2>
@@ -53,7 +69,7 @@
           <button class="btn-add" onclick="openModal()">+ Add Habit</button>
         </div>
       </div>
- 
+
       <!-- Summary cards -->
       <div class="summary-row">
         <div class="summary-card">
@@ -73,7 +89,7 @@
           <div class="summary-lbl">Completion</div>
         </div>
       </div>
- 
+
       <!-- Category tabs -->
       <div class="tabs">
         <button class="tab active" onclick="filterCat('all', this)">All</button>
@@ -82,38 +98,38 @@
         <button class="tab" onclick="filterCat('mind', this)">Learning</button>
         <button class="tab" onclick="filterCat('work', this)">Work</button>
       </div>
- 
+
       <!-- Habits list -->
       <div id="habits-list"></div>
- 
+
     </div>
- 
+
     <!-- PROGRESS PAGE -->
     <div id="page-progress" style="display:none">
- 
+
       <div class="top-row">
         <div>
           <h2 class="page-title">Progress</h2>
           <p class="page-date">How consistent have you been?</p>
         </div>
       </div>
- 
+
       <div class="chart-card">
         <div class="chart-title">Habits completed per day — last 7 days</div>
         <div class="chart-bars" id="chart-bars"></div>
         <div class="chart-labels" id="chart-labels"></div>
       </div>
- 
+
       <h3 class="section-title">By category</h3>
       <div class="cat-breakdown" id="cat-breakdown"></div>
- 
+
       <h3 class="section-title">All habits</h3>
       <div id="progress-list"></div>
- 
+
     </div>
- 
+
   </div>
- 
+
   <!-- Habit detail modal -->
   <div class="modal-bg" id="detail-modal">
     <div class="modal modal-large">
@@ -124,7 +140,7 @@
       <div id="detail-content"></div>
     </div>
   </div>
- 
+
   <!-- Add / Edit Modal -->
   <div class="modal-bg" id="modal-bg">
     <div class="modal">
@@ -159,7 +175,7 @@
       </div>
     </div>
   </div>
- 
+
   <script src="app.js"></script>
 </body>
 </html>
