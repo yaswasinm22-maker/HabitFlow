@@ -9,7 +9,56 @@ body {
   min-height: 100vh;
 }
 
-/* ── Name overlay ── */
+/* ── Auth overlay ── */
+.auth-overlay {
+  display: none;
+  position: fixed;
+  inset: 0;
+  background: #2d6a4f;
+  z-index: 999;
+  align-items: center;
+  justify-content: center;
+}
+.auth-overlay.open { display: flex; }
+.auth-box {
+  background: #fff;
+  border-radius: 16px;
+  padding: 40px;
+  width: 420px;
+  max-width: 95vw;
+}
+.auth-tabs {
+  display: flex;
+  gap: 0;
+  margin-bottom: 24px;
+  border: 1px solid #e8e8e4;
+  border-radius: 10px;
+  overflow: hidden;
+}
+.auth-tab {
+  flex: 1;
+  padding: 10px;
+  border: none;
+  background: none;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  color: #888;
+  transition: all .15s;
+}
+.auth-tab.active {
+  background: #2d6a4f;
+  color: #fff;
+}
+.auth-error {
+  font-size: 13px;
+  color: #e76f51;
+  margin-bottom: 12px;
+  min-height: 18px;
+  text-align: center;
+}
+
+/* ── Name overlay (kept for reference, replaced by auth) ── */
 .name-overlay {
   display: none;
   position: fixed;
@@ -53,8 +102,10 @@ body {
   font-size: 15px;
   font-weight: bold;
   cursor: pointer;
+  margin-top: 8px;
 }
 .name-btn:hover { background: #1f4d38; }
+.name-btn:disabled { background: #aaa; cursor: not-allowed; }
 
 /* ── Header ── */
 .header {
