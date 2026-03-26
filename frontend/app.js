@@ -1,42 +1,116 @@
-const API_BASE = 'https://habitflow-backend-7ful.onrender.com'; // 🔁 Replace with your actual backend URL
-const API = `${API_BASE}/api/habits`;
+const API = 'https://habitflow-backend-7ful.onrender.com/api/habits';
 
-// ── Authentication check ──
-const token = localStorage.getItem('token');
-if (!token) {
-  window.location.href = 'login.html';
-}
-
-// ── State ──
+// ── State ──────────────────────────────────────────────────────────────────
 let habits = [];
 let currentCat = 'all';
 let editingId = null;
+let detailHabitId = null;
+let calendarMonth = new Date().getMonth();
+let calendarYear = new Date().getFullYear();
+let reminderTimers = [];
 
-// ── Helper to get auth header ──
-function authHeader() {
-  return { 'Authorization': `Bearer ${token}` };
+// ── On load ────────────────────────────────────────────────────────────────
+document.addEventListener('DOMContentLoaded', () => {
+  initName();
+  initDate();
+  fetchHabits();
+  requestNotificationPermission();
+});
+
+// ── Name handling ──────────────────────────────────────────────────────────
+function initName() {
+  const name = localStorage.getItem('habitflow_name');
+  if (!name) {
+    document.getElementById('name-overlay').classList.add('open');
+    setTimeout(() => document.getElementById('user-name-input').focus(), 100);
+  } else {
+    setGreeting(name);
+  }
+  document.getElementById('user-name-input').addEventListener('keydown', function(e) {
+    if (e.key === 'Enter') saveName();
+  });
 }
 
-// ── On load ──
-document.addEventListener('DOMContentLoaded', () => {
+function saveName() {
+  const name = document.getElementById('user-name-input').value.trim();
+  if (!name) { alert('Please enter your name!'); return; }
+  localStorage.setItem('habitflow_name', name);
+  document.getElementById('name-overlay').classList.remove('open');
+  setGreeting(name);
+}
+
+function setGreeting(name) {
+  const hour = new Date().getHours();
+  const time = hour < 12 ? 'Good morning' : hour < 17 ? 'Good afternoon' : 'Good evening';
+  document.getElementById('greeting').textContent = `${time}, ${name}!`;
+}
+
+function changeName() {
+  localStorage.removeItem('habitflow_name');
+  document.getElementById('user-name-input').value = '';
+  document.getElementById('name-overlay').classList.add('open');
+  setTimeout(() => document.getElementById('user-name-input').focus(), 100);
+}
+
+// ── Date handling ──────────────────────────────────────────────────────────
+function initDate() {
   const d = new Date();
   document.getElementById('page-date').textContent =
     d.toLocaleDateString('en-IN', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
-  fetchHabits();
-});
+  const picker = document.getElementById('log-date');
+  picker.value = getToday();
+  picker.max = getToday();
+}
 
-// ── Fetch habits from backend ──
-async function fetchHabits() {
-  try {
-    const res = await fetch(API, { headers: authHeader() });
-    habits = await res.json();
-    renderAll();
-  } catch (err) {
-    console.error('Cannot connect to backend.', err);
+function getSelectedDate() {
+  const picker = document.getElementById('log-date');
+  return picker && picker.value ? picker.value : getToday();
+}
+
+// ── Notifications ──────────────────────────────────────────────────────────
+function requestNotificationPermission() {
+  if ('Notification' in window && Notification.permission === 'default') {
+    Notification.requestPermission();
   }
 }
 
-// ── Render everything ──
+function scheduleReminders() {
+  reminderTimers.forEach(t => clearTimeout(t));
+  reminderTimers = [];
+
+  if (!('Notification' in window) || Notification.permission !== 'granted') return;
+
+  habits.forEach(h => {
+    if (!h.reminderTime) return;
+    const [hours, minutes] = h.reminderTime.split(':').map(Number);
+    const now = new Date();
+    const reminder = new Date();
+    reminder.setHours(hours, minutes, 0, 0);
+    if (reminder <= now) reminder.setDate(reminder.getDate() + 1);
+    const delay = reminder - now;
+    const timer = setTimeout(() => {
+      new Notification('HabitFlow Reminder', {
+        body: `Time to: ${h.name}`,
+        icon: 'https://cdn-icons-png.flaticon.com/512/1828/1828884.png'
+      });
+    }, delay);
+    reminderTimers.push(timer);
+  });
+}
+
+// ── Fetch habits ───────────────────────────────────────────────────────────
+async function fetchHabits() {
+  try {
+    const res = await fetch(API);
+    habits = await res.json();
+    renderAll();
+    scheduleReminders();
+  } catch (err) {
+    console.error('Cannot connect to backend.');
+  }
+}
+
+// ── Render all ─────────────────────────────────────────────────────────────
 function renderAll() {
   renderStats();
   renderHabits();
@@ -44,9 +118,9 @@ function renderAll() {
   renderProgress();
 }
 
-// ── Stats ──
+// ── Stats ──────────────────────────────────────────────────────────────────
 function renderStats() {
-  const today = getToday();
+  const today = getSelectedDate();
   const done = habits.filter(h => h.completedDates.includes(today)).length;
   const total = habits.length;
   const best = habits.reduce((m, h) => Math.max(m, h.bestStreak), 0);
@@ -58,12 +132,11 @@ function renderStats() {
   document.getElementById('stat-rate').textContent = rate + '%';
 }
 
-// ── Habits list ──
+// ── Habits list ────────────────────────────────────────────────────────────
 function renderHabits() {
   const list = document.getElementById('habits-list');
   list.innerHTML = '';
-
-  const today = getToday();
+  const today = getSelectedDate();
 
   const filtered = currentCat === 'all'
     ? habits
@@ -92,22 +165,45 @@ function renderHabits() {
 
     catHabits.forEach(h => {
       const isDone = h.completedDates.includes(today);
+
+      // Per-habit progress since creation
+      const createdDate = new Date(h.createdAt).toISOString().split('T')[0];
+      const start = new Date(createdDate);
+      const end = new Date(getToday());
+      const totalDays = Math.max(1, Math.round((end - start) / 86400000) + 1);
+      const totalDone = h.completedDates.length;
+      const rate = Math.round(totalDone / totalDays * 100);
+      const fillClass = rate >= 70 ? '' : rate >= 40 ? 'mid' : 'low';
+
       const card = document.createElement('div');
       card.className = 'habit-card' + (isDone ? ' done' : '');
       card.innerHTML = `
-        <button class="check ${isDone ? 'done' : ''}" onclick="toggleHabit('${h._id}')">
-          ${isDone ? '✓' : ''}
-        </button>
-        <div class="habit-info">
-          <div class="habit-name ${isDone ? 'done' : ''}">${h.name}</div>
-          ${h.description ? `<div class="habit-desc">${h.description}</div>` : ''}
+        <div class="habit-top">
+          <button class="check ${isDone ? 'done' : ''}" onclick="toggleHabit('${h._id}')">
+            ${isDone ? '✓' : ''}
+          </button>
+          <div class="habit-info">
+            <div class="habit-name ${isDone ? 'done' : ''}">${h.name}</div>
+            ${h.description ? `<div class="habit-desc">${h.description}</div>` : ''}
+            ${h.reminderTime ? `<div class="habit-reminder">⏰ Reminder: ${formatTime(h.reminderTime)}</div>` : ''}
+          </div>
+          <div class="habit-right">
+            <span class="streak-badge ${h.streak >= 7 ? 'hot' : ''}">
+              ${h.streak > 0 ? '🔥 ' + h.streak + 'd' : 'No streak'}
+            </span>
+            <button class="btn-detail" onclick="openDetailModal('${h._id}')">📅 View</button>
+            <button class="btn-edit" onclick="openEditModal('${h._id}')">✏️</button>
+            <button class="btn-delete" onclick="deleteHabit('${h._id}')">🗑️</button>
+          </div>
         </div>
-        <div class="habit-right">
-          <span class="streak-badge ${h.streak >= 7 ? 'hot' : ''}">
-            ${h.streak > 0 ? '🔥 ' + h.streak + ' day streak' : 'No streak yet'}
-          </span>
-          <button class="btn-edit" onclick="openEditModal('${h._id}')">✏️</button>
-          <button class="btn-delete" onclick="deleteHabit('${h._id}')">🗑️</button>
+        <div class="habit-progress">
+          <div class="habit-progress-top">
+            <span>Overall progress</span>
+            <span>${totalDone} of ${totalDays} days — ${rate}%</span>
+          </div>
+          <div class="habit-progress-bar-bg">
+            <div class="habit-progress-bar-fill ${fillClass}" style="width:${rate}%"></div>
+          </div>
         </div>
       `;
       list.appendChild(card);
@@ -115,7 +211,7 @@ function renderHabits() {
   });
 }
 
-// ── Weekly bar chart ──
+// ── Weekly chart ───────────────────────────────────────────────────────────
 function renderChart() {
   const barsEl = document.getElementById('chart-bars');
   const labelsEl = document.getElementById('chart-labels');
@@ -154,7 +250,7 @@ function renderChart() {
   });
 }
 
-// ── Progress page ──
+// ── Progress page ──────────────────────────────────────────────────────────
 function renderProgress() {
   renderCatBreakdown();
   renderProgressList();
@@ -196,7 +292,7 @@ function renderCatBreakdown() {
     card.innerHTML = `
       <div class="cat-card-name">${cat.label}</div>
       <div class="cat-card-rate">${rate}%</div>
-      <div class="cat-card-sub">${done} of ${total} possible check-ins this week</div>
+      <div class="cat-card-sub">${done} of ${total} check-ins this week</div>
       <div class="progress-bar-bg">
         <div class="progress-bar-fill ${fillClass}" style="width:${rate}%"></div>
       </div>
@@ -205,7 +301,7 @@ function renderCatBreakdown() {
   });
 
   if (el.children.length === 0) {
-    el.innerHTML = '<p style="color:#aaa;font-size:13px">Add some habits to see your category breakdown.</p>';
+    el.innerHTML = '<p style="color:#aaa;font-size:13px">Add some habits to see your breakdown.</p>';
   }
 }
 
@@ -227,9 +323,9 @@ function renderProgressList() {
     const createdDate = new Date(h.createdAt).toISOString().split('T')[0];
     const start = new Date(createdDate);
     const end = new Date(today);
-    const totalDays = Math.round((end - start) / 86400000) + 1;
+    const totalDays = Math.max(1, Math.round((end - start) / 86400000) + 1);
     const totalDone = h.completedDates.length;
-    const rate = totalDays > 0 ? Math.round(totalDone / totalDays * 100) : 0;
+    const rate = Math.round(totalDone / totalDays * 100);
     return { ...h, rate, totalDays, totalDone, createdDate };
   }).sort((a, b) => b.rate - a.rate);
 
@@ -253,7 +349,7 @@ function renderProgressList() {
         <span>✅ Done ${h.totalDone} of ${h.totalDays} days</span>
         <span>🔥 Best streak: ${h.bestStreak} days</span>
       </div>
-      <div class="progress-bar-bg" style="margin: 8px 0;">
+      <div class="progress-bar-bg" style="margin:8px 0">
         <div class="progress-bar-fill ${fillClass}" style="width:${h.rate}%"></div>
       </div>
       <div class="dates-row">${datesHtml}</div>
@@ -262,45 +358,167 @@ function renderProgressList() {
   });
 }
 
-// ── Toggle habit done ──
-async function toggleHabit(id) {
+// ── Detail modal with calendar ─────────────────────────────────────────────
+function openDetailModal(id) {
+  const h = habits.find(h => h._id === id);
+  if (!h) return;
+  detailHabitId = id;
+  calendarMonth = new Date().getMonth();
+  calendarYear = new Date().getFullYear();
+  document.getElementById('detail-title').textContent = h.name;
+  renderDetailContent(h);
+  document.getElementById('detail-modal').classList.add('open');
+}
+
+function renderDetailContent(h) {
+  const today = getToday();
+  const createdDate = new Date(h.createdAt).toISOString().split('T')[0];
+  const start = new Date(createdDate);
+  const end = new Date(today);
+  const totalDays = Math.max(1, Math.round((end - start) / 86400000) + 1);
+  const totalDone = h.completedDates.length;
+  const rate = Math.round(totalDone / totalDays * 100);
+
+  const content = document.getElementById('detail-content');
+  content.innerHTML = `
+    <div class="detail-stats">
+      <div class="detail-stat">
+        <div class="detail-stat-val">${h.streak}</div>
+        <div class="detail-stat-lbl">Current streak</div>
+      </div>
+      <div class="detail-stat">
+        <div class="detail-stat-val">${h.bestStreak}</div>
+        <div class="detail-stat-lbl">Best streak</div>
+      </div>
+      <div class="detail-stat">
+        <div class="detail-stat-val">${rate}%</div>
+        <div class="detail-stat-lbl">Completion rate</div>
+      </div>
+    </div>
+    <div class="calendar-section">
+      <div class="calendar-nav">
+        <button class="calendar-nav-btn" onclick="changeCalendarMonth(-1)">&#8592;</button>
+        <span class="calendar-month" id="cal-month-label"></span>
+        <button class="calendar-nav-btn" onclick="changeCalendarMonth(1)">&#8594;</button>
+      </div>
+      <div class="calendar-grid" id="cal-grid"></div>
+      <div class="calendar-legend">
+        <span><span class="legend-dot" style="background:#2d6a4f"></span>Completed</span>
+        <span><span class="legend-dot" style="background:#f0f9f4;border:1px solid #b7d5c8"></span>Not done</span>
+      </div>
+    </div>
+    <p style="font-size:12px;color:#aaa;margin-top:8px">Click any past date to toggle completion for that date.</p>
+  `;
+  renderCalendar(h);
+}
+
+function renderCalendar(h) {
+  const monthNames = ['January','February','March','April','May','June','July','August','September','October','November','December'];
+  document.getElementById('cal-month-label').textContent = `${monthNames[calendarMonth]} ${calendarYear}`;
+
+  const grid = document.getElementById('cal-grid');
+  grid.innerHTML = '';
+
+  const days = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
+  days.forEach(d => {
+    const el = document.createElement('div');
+    el.className = 'calendar-day-header';
+    el.textContent = d;
+    grid.appendChild(el);
+  });
+
+  const firstDay = new Date(calendarYear, calendarMonth, 1).getDay();
+  const daysInMonth = new Date(calendarYear, calendarMonth + 1, 0).getDate();
+  const today = getToday();
+
+  for (let i = 0; i < firstDay; i++) {
+    const empty = document.createElement('div');
+    empty.className = 'calendar-day empty';
+    grid.appendChild(empty);
+  }
+
+  for (let d = 1; d <= daysInMonth; d++) {
+    const dateStr = `${calendarYear}-${String(calendarMonth + 1).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
+    const isCompleted = h.completedDates.includes(dateStr);
+    const isToday = dateStr === today;
+    const isFuture = dateStr > today;
+    const isBeforeCreation = dateStr < new Date(h.createdAt).toISOString().split('T')[0];
+
+    const el = document.createElement('div');
+    let cls = 'calendar-day';
+    if (isCompleted) cls += ' completed';
+    if (isToday) cls += ' today';
+    if (isFuture || isBeforeCreation) cls += ' future';
+    el.className = cls;
+    el.textContent = d;
+
+    if (!isFuture && !isBeforeCreation) {
+      el.onclick = () => toggleHabitDate(h._id, dateStr);
+    }
+
+    grid.appendChild(el);
+  }
+}
+
+function changeCalendarMonth(dir) {
+  calendarMonth += dir;
+  if (calendarMonth < 0) { calendarMonth = 11; calendarYear--; }
+  if (calendarMonth > 11) { calendarMonth = 0; calendarYear++; }
+  const h = habits.find(h => h._id === detailHabitId);
+  if (h) renderCalendar(h);
+}
+
+function closeDetailModal() {
+  document.getElementById('detail-modal').classList.remove('open');
+  detailHabitId = null;
+}
+
+// Toggle habit for any date (from calendar)
+async function toggleHabitDate(id, date) {
   try {
-    const today = getToday();
     const res = await fetch(`${API}/${id}/complete`, {
       method: 'PATCH',
-      headers: {
-        'Content-Type': 'application/json',
-        ...authHeader()
-      },
-      body: JSON.stringify({ date: today })
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ date })
     });
     const updated = await res.json();
     habits = habits.map(h => h._id === id ? updated : h);
     renderAll();
+    const h = habits.find(h => h._id === id);
+    if (h) {
+      renderDetailContent(h);
+    }
   } catch (err) {
     console.error('Toggle failed:', err);
   }
 }
 
-// ── Delete habit ──
+// ── Toggle habit (today/selected date) ────────────────────────────────────
+async function toggleHabit(id) {
+  await toggleHabitDate(id, getSelectedDate());
+}
+
+// ── Delete habit ───────────────────────────────────────────────────────────
 async function deleteHabit(id) {
   if (!confirm('Are you sure you want to delete this habit?')) return;
   try {
-    await fetch(`${API}/${id}`, { method: 'DELETE', headers: authHeader() });
+    await fetch(`${API}/${id}`, { method: 'DELETE' });
     habits = habits.filter(h => h._id !== id);
     renderAll();
+    scheduleReminders();
   } catch (err) {
     console.error('Delete failed:', err);
   }
 }
 
-// ── Modal ──
+// ── Modal ──────────────────────────────────────────────────────────────────
 function openModal() {
   editingId = null;
   document.getElementById('modal-title').textContent = 'Add a Habit';
   document.getElementById('m-name').value = '';
   document.getElementById('m-desc').value = '';
   document.getElementById('m-cat').value = 'health';
+  document.getElementById('m-reminder').value = '';
   document.getElementById('modal-bg').classList.add('open');
   setTimeout(() => document.getElementById('m-name').focus(), 100);
 }
@@ -313,6 +531,7 @@ function openEditModal(id) {
   document.getElementById('m-name').value = h.name;
   document.getElementById('m-desc').value = h.description || '';
   document.getElementById('m-cat').value = h.category;
+  document.getElementById('m-reminder').value = h.reminderTime || '';
   document.getElementById('modal-bg').classList.add('open');
 }
 
@@ -323,25 +542,20 @@ function closeModal() {
 
 async function saveHabit() {
   const name = document.getElementById('m-name').value.trim();
-  if (!name) {
-    alert('Please enter a habit name.');
-    return;
-  }
+  if (!name) { alert('Please enter a habit name.'); return; }
 
   const body = {
-    name: name,
+    name,
     description: document.getElementById('m-desc').value.trim(),
-    category: document.getElementById('m-cat').value
+    category: document.getElementById('m-cat').value,
+    reminderTime: document.getElementById('m-reminder').value || ''
   };
 
   try {
     if (editingId) {
       const res = await fetch(`${API}/${editingId}`, {
         method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-          ...authHeader()
-        },
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(body)
       });
       const updated = await res.json();
@@ -349,10 +563,7 @@ async function saveHabit() {
     } else {
       const res = await fetch(API, {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          ...authHeader()
-        },
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(body)
       });
       const created = await res.json();
@@ -360,13 +571,14 @@ async function saveHabit() {
     }
     closeModal();
     renderAll();
+    scheduleReminders();
   } catch (err) {
     console.error('Save failed:', err);
     alert('Something went wrong. Make sure the backend is running.');
   }
 }
 
-// ── Page switching ──
+// ── Page switching ─────────────────────────────────────────────────────────
 function showPage(page, btn) {
   document.getElementById('page-habits').style.display   = page === 'habits'   ? 'block' : 'none';
   document.getElementById('page-progress').style.display = page === 'progress' ? 'block' : 'none';
@@ -375,7 +587,7 @@ function showPage(page, btn) {
   if (page === 'progress') renderProgress();
 }
 
-// ── Category filter ──
+// ── Category filter ────────────────────────────────────────────────────────
 function filterCat(cat, btn) {
   currentCat = cat;
   document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
@@ -383,14 +595,7 @@ function filterCat(cat, btn) {
   renderHabits();
 }
 
-// ── Logout ──
-function logout() {
-  localStorage.removeItem('token');
-  localStorage.removeItem('userId');
-  window.location.href = 'login.html';
-}
-
-// ── Helpers ──
+// ── Helpers ────────────────────────────────────────────────────────────────
 function getToday() {
   return new Date().toISOString().split('T')[0];
 }
@@ -410,12 +615,21 @@ function formatDate(dateStr) {
   return d.toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' });
 }
 
-// Close modal when clicking outside
+function formatTime(timeStr) {
+  if (!timeStr) return '';
+  const [h, m] = timeStr.split(':').map(Number);
+  const ampm = h >= 12 ? 'PM' : 'AM';
+  const hr = h % 12 || 12;
+  return `${hr}:${String(m).padStart(2,'0')} ${ampm}`;
+}
+
+// ── Close modals ───────────────────────────────────────────────────────────
 document.getElementById('modal-bg').addEventListener('click', function(e) {
   if (e.target === this) closeModal();
 });
-
-// Close modal with Escape key
+document.getElementById('detail-modal').addEventListener('click', function(e) {
+  if (e.target === this) closeDetailModal();
+});
 document.addEventListener('keydown', function(e) {
-  if (e.key === 'Escape') closeModal();
+  if (e.key === 'Escape') { closeModal(); closeDetailModal(); }
 });
