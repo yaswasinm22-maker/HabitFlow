@@ -1,4 +1,5 @@
-const API = 'https://habitflow-backend-7ful.onrender.com/api/habits';
+const API_BASE = 'https://habitflow-backend-7ful.onrender.com/api';
+const API = `${API_BASE}/habits`;
 
 // ── State ──────────────────────────────────────────────────────────────────
 let habits = [];
@@ -8,48 +9,145 @@ let detailHabitId = null;
 let calendarMonth = new Date().getMonth();
 let calendarYear = new Date().getFullYear();
 let reminderTimers = [];
+let authMode = 'login'; // 'login' or 'register'
+
+// ── Helpers: token ─────────────────────────────────────────────────────────
+function getToken() {
+  return localStorage.getItem('habitflow_token');
+}
+
+function authHeaders() {
+  return {
+    'Content-Type': 'application/json',
+    'Authorization': `Bearer ${getToken()}`
+  };
+}
 
 // ── On load ────────────────────────────────────────────────────────────────
 document.addEventListener('DOMContentLoaded', () => {
-  initName();
-  initDate();
-  fetchHabits();
-  requestNotificationPermission();
+  if (getToken()) {
+    showApp();
+  } else {
+    showAuthOverlay();
+  }
+
+  // Allow Enter key on auth fields
+  document.getElementById('auth-email').addEventListener('keydown', e => { if (e.key === 'Enter') submitAuth(); });
+  document.getElementById('auth-password').addEventListener('keydown', e => { if (e.key === 'Enter') submitAuth(); });
 });
 
-// ── Name handling ──────────────────────────────────────────────────────────
-function initName() {
-  const name = localStorage.getItem('habitflow_name');
-  if (!name) {
-    document.getElementById('name-overlay').classList.add('open');
-    setTimeout(() => document.getElementById('user-name-input').focus(), 100);
-  } else {
-    setGreeting(name);
+// ── Auth overlay ───────────────────────────────────────────────────────────
+function showAuthOverlay() {
+  document.getElementById('auth-overlay').classList.add('open');
+}
+
+function hideAuthOverlay() {
+  document.getElementById('auth-overlay').classList.remove('open');
+}
+
+function switchAuthTab(mode) {
+  authMode = mode;
+  document.getElementById('tab-login').classList.toggle('active', mode === 'login');
+  document.getElementById('tab-register').classList.toggle('active', mode === 'register');
+  document.getElementById('auth-submit-btn').textContent = mode === 'login' ? 'Login' : 'Create Account';
+  document.getElementById('auth-error').textContent = '';
+}
+
+async function submitAuth() {
+  const email = document.getElementById('auth-email').value.trim();
+  const password = document.getElementById('auth-password').value;
+  const errorEl = document.getElementById('auth-error');
+  errorEl.textContent = '';
+
+  if (!email || !password) {
+    errorEl.textContent = 'Please enter your email and password.';
+    return;
   }
-  document.getElementById('user-name-input').addEventListener('keydown', function(e) {
-    if (e.key === 'Enter') saveName();
-  });
+
+  const btn = document.getElementById('auth-submit-btn');
+  btn.disabled = true;
+  btn.textContent = authMode === 'login' ? 'Logging in…' : 'Creating account…';
+
+  try {
+    const endpoint = authMode === 'login' ? `${API_BASE}/auth/login` : `${API_BASE}/auth/register`;
+    const res = await fetch(endpoint, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email, password })
+    });
+    const data = await res.json();
+
+    if (!res.ok) {
+      errorEl.textContent = data.error || 'Something went wrong. Try again.';
+      btn.disabled = false;
+      btn.textContent = authMode === 'login' ? 'Login' : 'Create Account';
+      return;
+    }
+
+    if (authMode === 'register') {
+      // After register, auto-login
+      errorEl.style.color = '#2d6a4f';
+      errorEl.textContent = 'Account created! Logging you in…';
+      authMode = 'login';
+      const loginRes = await fetch(`${API_BASE}/auth/login`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email, password })
+      });
+      const loginData = await loginRes.json();
+      if (!loginRes.ok) {
+        errorEl.style.color = '#e76f51';
+        errorEl.textContent = 'Registered! Please log in.';
+        switchAuthTab('login');
+        btn.disabled = false;
+        return;
+      }
+      localStorage.setItem('habitflow_token', loginData.token);
+    } else {
+      localStorage.setItem('habitflow_token', data.token);
+    }
+
+    // Extract email username as display name
+    const name = email.split('@')[0];
+    localStorage.setItem('habitflow_name', name);
+
+    hideAuthOverlay();
+    showApp();
+  } catch (err) {
+    errorEl.style.color = '#e76f51';
+    errorEl.textContent = 'Cannot connect to server. Try again.';
+    btn.disabled = false;
+    btn.textContent = authMode === 'login' ? 'Login' : 'Create Account';
+  }
 }
 
-function saveName() {
-  const name = document.getElementById('user-name-input').value.trim();
-  if (!name) { alert('Please enter your name!'); return; }
-  localStorage.setItem('habitflow_name', name);
-  document.getElementById('name-overlay').classList.remove('open');
-  setGreeting(name);
+function logout() {
+  if (!confirm('Log out of HabitFlow?')) return;
+  localStorage.removeItem('habitflow_token');
+  localStorage.removeItem('habitflow_name');
+  habits = [];
+  document.getElementById('auth-email').value = '';
+  document.getElementById('auth-password').value = '';
+  document.getElementById('auth-error').textContent = '';
+  switchAuthTab('login');
+  showAuthOverlay();
 }
 
-function setGreeting(name) {
+// ── Show app after login ───────────────────────────────────────────────────
+function showApp() {
+  hideAuthOverlay();
+  initDate();
+  setGreeting();
+  fetchHabits();
+  requestNotificationPermission();
+}
+
+// ── Greeting ───────────────────────────────────────────────────────────────
+function setGreeting() {
+  const name = localStorage.getItem('habitflow_name') || 'there';
   const hour = new Date().getHours();
   const time = hour < 12 ? 'Good morning' : hour < 17 ? 'Good afternoon' : 'Good evening';
   document.getElementById('greeting').textContent = `${time}, ${name}!`;
-}
-
-function changeName() {
-  localStorage.removeItem('habitflow_name');
-  document.getElementById('user-name-input').value = '';
-  document.getElementById('name-overlay').classList.add('open');
-  setTimeout(() => document.getElementById('user-name-input').focus(), 100);
 }
 
 // ── Date handling ──────────────────────────────────────────────────────────
@@ -77,9 +175,7 @@ function requestNotificationPermission() {
 function scheduleReminders() {
   reminderTimers.forEach(t => clearTimeout(t));
   reminderTimers = [];
-
   if (!('Notification' in window) || Notification.permission !== 'granted') return;
-
   habits.forEach(h => {
     if (!h.reminderTime) return;
     const [hours, minutes] = h.reminderTime.split(':').map(Number);
@@ -101,12 +197,14 @@ function scheduleReminders() {
 // ── Fetch habits ───────────────────────────────────────────────────────────
 async function fetchHabits() {
   try {
-    const res = await fetch(API);
+    const res = await fetch(API, { headers: authHeaders() });
+    if (res.status === 401) { logout(); return; }
     habits = await res.json();
+    if (!Array.isArray(habits)) habits = [];
     renderAll();
     scheduleReminders();
   } catch (err) {
-    console.error('Cannot connect to backend.');
+    console.error('Cannot connect to backend:', err);
   }
 }
 
@@ -165,8 +263,6 @@ function renderHabits() {
 
     catHabits.forEach(h => {
       const isDone = h.completedDates.includes(today);
-
-      // Per-habit progress since creation
       const createdDate = new Date(h.createdAt).toISOString().split('T')[0];
       const start = new Date(createdDate);
       const end = new Date(getToday());
@@ -473,21 +569,20 @@ function closeDetailModal() {
   detailHabitId = null;
 }
 
-// Toggle habit for any date (from calendar)
+// ── Toggle habit for any date ──────────────────────────────────────────────
 async function toggleHabitDate(id, date) {
   try {
     const res = await fetch(`${API}/${id}/complete`, {
       method: 'PATCH',
-      headers: { 'Content-Type': 'application/json' },
+      headers: authHeaders(),
       body: JSON.stringify({ date })
     });
+    if (res.status === 401) { logout(); return; }
     const updated = await res.json();
     habits = habits.map(h => h._id === id ? updated : h);
     renderAll();
     const h = habits.find(h => h._id === id);
-    if (h) {
-      renderDetailContent(h);
-    }
+    if (h) renderDetailContent(h);
   } catch (err) {
     console.error('Toggle failed:', err);
   }
@@ -502,7 +597,8 @@ async function toggleHabit(id) {
 async function deleteHabit(id) {
   if (!confirm('Are you sure you want to delete this habit?')) return;
   try {
-    await fetch(`${API}/${id}`, { method: 'DELETE' });
+    const res = await fetch(`${API}/${id}`, { method: 'DELETE', headers: authHeaders() });
+    if (res.status === 401) { logout(); return; }
     habits = habits.filter(h => h._id !== id);
     renderAll();
     scheduleReminders();
@@ -552,29 +648,32 @@ async function saveHabit() {
   };
 
   try {
+    let res, data;
     if (editingId) {
-      const res = await fetch(`${API}/${editingId}`, {
+      res = await fetch(`${API}/${editingId}`, {
         method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
+        headers: authHeaders(),
         body: JSON.stringify(body)
       });
-      const updated = await res.json();
-      habits = habits.map(h => h._id === editingId ? updated : h);
+      if (res.status === 401) { logout(); return; }
+      data = await res.json();
+      habits = habits.map(h => h._id === editingId ? data : h);
     } else {
-      const res = await fetch(API, {
+      res = await fetch(API, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: authHeaders(),
         body: JSON.stringify(body)
       });
-      const created = await res.json();
-      habits.push(created);
+      if (res.status === 401) { logout(); return; }
+      data = await res.json();
+      habits = [...habits, data];
     }
     closeModal();
     renderAll();
     scheduleReminders();
   } catch (err) {
     console.error('Save failed:', err);
-    alert('Something went wrong. Make sure the backend is running.');
+    alert('Something went wrong. Please try again.');
   }
 }
 
@@ -623,7 +722,7 @@ function formatTime(timeStr) {
   return `${hr}:${String(m).padStart(2,'0')} ${ampm}`;
 }
 
-// ── Close modals ───────────────────────────────────────────────────────────
+// ── Close modals on backdrop click / Escape ────────────────────────────────
 document.getElementById('modal-bg').addEventListener('click', function(e) {
   if (e.target === this) closeModal();
 });
