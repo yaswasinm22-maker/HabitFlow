@@ -32,6 +32,7 @@ router.post('/', auth, async (req, res) => {
       name: req.body.name,
       description: req.body.description,
       category: req.body.category,
+      reminderTime: req.body.reminderTime || '',
       customCategory: req.body.customCategory
     });
     const newHabit = await habit.save();
@@ -50,6 +51,7 @@ router.put('/:id', auth, async (req, res) => {
     if (req.body.name !== undefined) habit.name = req.body.name;
     if (req.body.description !== undefined) habit.description = req.body.description;
     if (req.body.category !== undefined) habit.category = req.body.category;
+    if (req.body.reminderTime !== undefined) habit.reminderTime = req.body.reminderTime;
     if (req.body.customCategory !== undefined) habit.customCategory = req.body.customCategory;
 
     const updated = await habit.save();
